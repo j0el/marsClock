@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Earth &amp; Mars Time</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center; background:#0b0d12; color:#e8e8ee;
+         font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
+  .frame { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:#2a2e3a; border:1px solid #2a2e3a;
+           border-radius:16px; overflow:hidden; width:min(960px,94vw); }
+  .panel { padding:28px 24px; background:#12151c; }
+  .panel.mars { background:#1a1210; }
+  h2 { margin:0 0 4px; font-size:14px; letter-spacing:.14em; text-transform:uppercase; color:#8d93a5; }
+  .mars h2 { color:#c8896f; }
+  .clock { font-variant-numeric:tabular-nums; font-size:clamp(34px,7vw,64px); font-weight:300; margin:10px 0 6px; }
+  .mars .clock { color:#ff9a76; }
+  .sub { color:#9aa0b2; font-size:15px; line-height:1.6; }
+  .sub b { color:#e8e8ee; font-weight:500; }
+  .foot { grid-column:1/-1; background:#12151c; padding:14px 24px; font-size:13px; color:#8d93a5; }
+  @media (max-width:640px){ .frame{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<div class="frame">
+  <section class="panel">
+    <h2>Earth</h2>
+    <div class="clock" id="eT">--:--:--</div>
+    <div class="sub" id="eD"></div>
+    <div class="sub" id="eU"></div>
+  </section>
+  <section class="panel mars">
+    <h2>Mars &middot; Coordinated Mars Time (Airy-0)</h2>
+    <div class="clock" id="mT">--:--:--</div>
+    <div class="sub" id="mS"></div>
+    <div class="sub" id="mC"></div>
+  </section>
+  <div class="foot" id="foot"></div>
+</div>
+
+<script>
+// ---- Mars time (Allen & Mahoney) ----
+const TAI_MINUS_UTC = 37;            // seconds; update if a leap second is ever added
+const SOL_IN_DAYS   = 1.0274912517;  // one sol in Earth days
+const MARS_YEAR_SOLS = 668.5991;     // sols per Mars year
+const CYCLE_SOLS = 3 * MARS_YEAR_SOLS; // ~2005.80 sols per 3-Mars-year calendar
+
+function marsTime(ms) {
+  const jdUT = ms / 86400000 + 2440587.5;
+  const jdTT = jdUT + (TAI_MINUS_UTC + 32.184) / 86400;
+  const msd  = (jdTT - 2405522.0028779) / SOL_IN_DAYS;   // Mars Sol Date
+  const sol  = Math.floor(msd);
+  const frac = msd - sol;                                  // fraction of sol -> MTC
+  const secs = frac * 86400;                               // "Mars seconds" (1/86400 sol)
+  return { msd, sol, h: Math.floor(secs / 3600), m: Math.floor(secs % 3600 / 60), s: Math.floor(secs % 60) };
+}
+
+// ---- Decimal "sol / weem / moom" calendar: 10 sols = weem, 10 weems = moom,
+// 20 mooms = 2000 sols, then a mini weem of 5-6 sols closes each 3-Mars-year cycle.
+function marsCalendar(sol) {
+  const start = n => Math.floor(n * CYCLE_SOLS);
+  let n = Math.floor(sol / CYCLE_SOLS);
+  while (start(n) > sol) n--;
+  while (start(n + 1) <= sol) n++;
+  const d = sol - start(n);                    // 0-based sol within cycle
+  const len = start(n + 1) - start(n);         // 2005 or 2006
+  if (d >= 2000) return { cycle: n + 1, mini: true, sol: d - 1999, len, miniLen: len - 2000 };
+  return { cycle: n + 1, moom: Math.floor(d / 100) + 1, weem: Math.floor(d % 100 / 10) + 1, sol: d % 10 + 1, len };
+}
+
+const p = (x, n = 2) => String(x).padStart(n, '0');
+const $ = id => document.getElementById(id);
+
+function tick() {
+  const now = new Date();
+  $('eT').textContent = `${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`;
+  $('eD').innerHTML = `<b>${now.toLocaleDateString(undefined, { weekday:'long', year:'numeric', month:'long', day:'numeric' })}</b>`;
+  $('eU').textContent = `UTC ${p(now.getUTCHours())}:${p(now.getUTCMinutes())}:${p(now.getUTCSeconds())}`;
+
+  const t = marsTime(now.getTime());
+  $('mT').textContent = `${p(t.h)}:${p(t.m)}:${p(t.s)}`;
+  $('mS').innerHTML = `Mars Sol Date <b>${t.msd.toFixed(3)}</b> &middot; sol <b>${t.sol.toLocaleString()}</b>`;
+  const c = marsCalendar(t.sol);
+  $('mC').innerHTML = c.mini
+    ? `Cycle <b>${c.cycle}</b> &middot; mini weem, sol <b>${c.sol}</b> of ${c.miniLen}`
+    : `Cycle <b>${c.cycle}</b> &middot; moom <b>${c.moom}</b>/20 &middot; weem <b>${c.weem}</b>/10 &middot; sol <b>${c.sol}</b>/10`;
+  $('foot').textContent = `1 sol = 24h 39m 35s Earth time (Mars clock shown in 24 stretched hours). ` +
+    `A 3-Mars-year cycle is ~${CYCLE_SOLS.toFixed(1)} sols: 20 moom × 100 sols + a 5–6 sol mini weem.`;
+}
+tick();
+setInterval(tick, 250);
+</script>
+</body>
+</html>
