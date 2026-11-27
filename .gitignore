@@ -1,0 +1,2 @@
+.pio/
+esp32c3/include/secrets.h
