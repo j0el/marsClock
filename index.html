@@ -70,6 +70,12 @@ function marsCalendar(sol) {
   return { cycle: n + 1, moom: Math.floor(d / 100) + 1, weem: Math.floor(d % 100 / 10) + 1, sol: d % 10 + 1, len };
 }
 
+// Mooms are real Mars place names in A-T order; sols run outward from the Sun.
+const MOOMS = ['Arcadia','Borealis','Cydonia','Daedalia','Elysium','Fortuna','Gale','Hellas','Isidis','Jezero',
+               'Kasei','Lyot','Meridiani','Noachis','Olympus','Pavonis','Quenisset','Reull','Syrtis','Tharsis'];
+const SOLS  = ['Sunsol','Mercurisol','Venusol','Terrasol','Phobosol','Deimosol','Jovisol','Saturnisol','Uranisol','Neptunisol'];
+const MINI  = 'Utopia';   // the closing mini weem
+
 const p = (x, n = 2) => String(x).padStart(n, '0');
 const $ = id => document.getElementById(id);
 
@@ -83,9 +89,11 @@ function tick() {
   $('mT').textContent = `${p(t.h)}:${p(t.m)}:${p(t.s)}`;
   $('mS').innerHTML = `Mars Sol Date <b>${t.msd.toFixed(3)}</b> &middot; sol <b>${t.sol.toLocaleString()}</b>`;
   const c = marsCalendar(t.sol);
-  $('mC').innerHTML = c.mini
-    ? `Cycle <b>${c.cycle}</b> &middot; mini weem, sol <b>${c.sol}</b> of ${c.miniLen}`
-    : `Cycle <b>${c.cycle}</b> &middot; moom <b>${c.moom}</b>/20 &middot; weem <b>${c.weem}</b>/10 &middot; sol <b>${c.sol}</b>/10`;
+  const date = c.mini
+    ? `${SOLS[c.sol - 1]}, ${c.sol} ${MINI}`
+    : `${SOLS[c.sol - 1]}, ${(c.weem - 1) * 10 + c.sol} ${MOOMS[c.moom - 1]}`;
+  const where = c.mini ? `mini weem of ${c.miniLen} sols` : `moom ${c.moom}/20 &middot; weem ${c.weem}/10`;
+  $('mC').innerHTML = `<b>${date}</b>, cycle <b>${c.cycle}</b><br>${where}`;
   $('foot').textContent = `1 sol = 24h 39m 35s Earth time (Mars clock shown in 24 stretched hours). ` +
     `A 3-Mars-year cycle is ~${CYCLE_SOLS.toFixed(1)} sols: 20 moom × 100 sols + a 5–6 sol mini weem.`;
 }
